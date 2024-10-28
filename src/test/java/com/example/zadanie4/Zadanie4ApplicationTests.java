@@ -12,7 +12,14 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,6 +33,8 @@ class Zadanie4ApplicationTests {
     private VisitProcessingService visitProcessingService;
 
     private final String testFilePath = "visits.txt";
+    private final int THREAD_COUNT = 8;
+    private final int RECORDS_COUNT = 200_000;
 
     @Test
     void testProcessingWith10_000Records_MultiThreaded() throws Exception {
@@ -34,23 +43,19 @@ class Zadanie4ApplicationTests {
 
         long startTimeMultiThreaded = System.currentTimeMillis();
 
-        for (int i = 0; i < 10_000; i++) {
-            String site = sites.get(ThreadLocalRandom.current().nextInt(sites.size()));
-            String user = "user" + i;
-            VisitDTO visit = new VisitDTO(site, randomDateWithin3Days(date), user);
-            kafkaTemplate.send("site-visits-topic", visit);
-        }
+        ExecutorService executorService = Executors.newFixedThreadPool(THREAD_COUNT);
+        List<Callable<Void>> tasks = createTasks(date, sites);
+
+        executorService.invokeAll(tasks);
+        executorService.shutdown();
+        executorService.awaitTermination(10, TimeUnit.MINUTES);
 
         waitForProcessingToComplete();
 
         long endTimeMultiThreaded = System.currentTimeMillis();
         System.out.println("Многопоточная обработка заняла: " + (endTimeMultiThreaded - startTimeMultiThreaded) + " мс");
 
-        Path path = Path.of(testFilePath);
-        assertTrue(Files.exists(path), "Файл с посещениями не был создан");
-
-        String content = Files.readString(path);
-        System.out.println(content);
+        verifyFileContent();
     }
 
     @Test
@@ -60,7 +65,7 @@ class Zadanie4ApplicationTests {
 
         long startTimeSingleThreaded = System.currentTimeMillis();
 
-        for (int i = 0; i < 10_000; i++) {
+        for (int i = 0; i < RECORDS_COUNT; i++) {
             String site = sites.get(ThreadLocalRandom.current().nextInt(sites.size()));
             String user = "user" + i;
             VisitDTO visit = new VisitDTO(site, randomDateWithin3Days(date), user);
@@ -72,6 +77,25 @@ class Zadanie4ApplicationTests {
         long endTimeSingleThreaded = System.currentTimeMillis();
         System.out.println("Однопоточная обработка заняла: " + (endTimeSingleThreaded - startTimeSingleThreaded) + " мс");
 
+        verifyFileContent();
+    }
+
+    private List<Callable<Void>> createTasks(LocalDate date, List<String> sites) {
+        AtomicInteger counter = new AtomicInteger(0);
+
+        return IntStream.range(0, THREAD_COUNT)
+                .mapToObj(i -> (Callable<Void>) () -> {
+                    for (int j = 0; j < RECORDS_COUNT / THREAD_COUNT; j++) {
+                        String site = sites.get(ThreadLocalRandom.current().nextInt(sites.size()));
+                        String user = "user" + counter.incrementAndGet();
+                        VisitDTO visit = new VisitDTO(site, randomDateWithin3Days(date), user);
+                        kafkaTemplate.send("site-visits-topic", visit);
+                    }
+                    return null;
+                }).collect(Collectors.toList());
+    }
+
+    private void verifyFileContent() throws Exception {
         Path path = Path.of(testFilePath);
         assertTrue(Files.exists(path), "Файл с посещениями не был создан");
 

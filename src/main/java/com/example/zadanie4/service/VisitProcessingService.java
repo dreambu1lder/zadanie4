@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class VisitProcessingService {
 
-    private static final int MAX_RECORDS = 10_000;
+    private static final int MAX_RECORDS = 200_000;
     private static final long PROCESSING_INTERVAL = 30;
 
     @Getter
