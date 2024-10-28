@@ -10,5 +10,6 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
+      max-poll-records: 100
     listener:
       concurrency: 3

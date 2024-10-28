@@ -2,23 +2,28 @@ package com.example.zadanie4.service;
 
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class FileWriterService {
 
-    public void writeToFile(Map<String, Integer> aggregatedVisits, CountDownLatch latch) {
-        try (FileWriter writer = new FileWriter("visits.txt", true)) {
-            for (Map.Entry<String, Integer> entry : aggregatedVisits.entrySet()) {
-                writer.write(entry.getKey() + "," + entry.getValue() + "\n");
+    private final ExecutorService fileWriterExecutor = Executors.newSingleThreadExecutor();
+
+    public void writeToFileAsync(Map<String, Integer> aggregatedVisits) {
+        fileWriterExecutor.submit(() -> {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter("visits.txt", true))) {
+                for (Map.Entry<String, Integer> entry : aggregatedVisits.entrySet()) {
+                    writer.write(entry.getKey() + "," + entry.getValue() + "\n");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            latch.countDown();
-        }
+        });
     }
 }
+
