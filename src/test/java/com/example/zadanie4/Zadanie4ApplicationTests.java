@@ -32,14 +32,14 @@ class Zadanie4ApplicationTests {
         LocalDate date = LocalDate.of(2024, 10, 18);
         List<String> sites = Arrays.asList("example.com", "other-site.com", "third-site.com");
 
+        long startTimeMultiThreaded = System.currentTimeMillis();
+
         for (int i = 0; i < 10_000; i++) {
             String site = sites.get(ThreadLocalRandom.current().nextInt(sites.size()));
             String user = "user" + i;
             VisitDTO visit = new VisitDTO(site, randomDateWithin3Days(date), user);
             kafkaTemplate.send("site-visits-topic", visit);
         }
-
-        long startTimeMultiThreaded = System.currentTimeMillis();
 
         waitForProcessingToComplete();
 
