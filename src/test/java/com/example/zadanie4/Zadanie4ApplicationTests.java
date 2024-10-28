@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -32,9 +34,10 @@ class Zadanie4ApplicationTests {
     @Test
     void testProcessingWith10_000Records() throws Exception {
         LocalDate date = LocalDate.of(2024, 10, 18);
+        List<String> sites = Arrays.asList("example.com", "other-site.com", "third-site.com");
 
         for (int i = 0; i < 10_000; i++) {
-            String site = "example.com";
+            String site = sites.get(ThreadLocalRandom.current().nextInt(sites.size()));
             String user = "user" + i;
 
             VisitDTO visit = new VisitDTO(site, randomDateWithin3Days(date), user);
